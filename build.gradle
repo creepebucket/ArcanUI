@@ -1,0 +1,431 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'idea'
+    id 'net.neoforged.moddev' version '2.0.140'
+}
+
+version = mod_version
+group = mod_group_id
+
+repositories {
+    mavenLocal()
+    // creepebucketlib 走 GitHub Packages，不使用本地文件依赖
+    maven {
+        name = "github_packages"
+        url = uri("https://maven.pkg.github.com/${project.findProperty('github_repository') ?: System.getenv('GITHUB_REPOSITORY')}")
+        credentials {
+            // 用 providers.gradleProperty 读取，避免被 init 脚本里 ext 上的过期同名属性遮蔽
+            username = providers.gradleProperty('gpr_user').orNull ?: providers.environmentVariable('GITHUB_ACTOR').orNull
+            password = providers.gradleProperty('gpr_key').orNull ?: providers.environmentVariable('GITHUB_TOKEN').orNull
+        }
+        // GitHub Packages 不返回 401 挑战，必须显式声明以启用预认证
+        authentication {
+            basic(BasicAuthentication)
+        }
+        content {
+            includeGroup 'org.creepebucket'
+        }
+    }
+    maven {
+        // location of the maven that hosts JEI files since January 2023
+        name = "Jared's maven"
+        url = "https://maven.blamejared.com/"
+    }
+    maven {
+        // location of a maven mirror for JEI files, as a fallback
+        name = "ModMaven"
+        url = "https://modmaven.dev"
+    }
+}
+
+base {
+    archivesName = mod_id
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+
+neoForge {
+    // Specify the version of NeoForge to use.
+    version = project.neo_version
+
+    // 只保留必需的 AT：面板尺寸 + 客户端槽位坐标（都是 final 字段）
+    accessTransformers = project.files('src/main/resources/META-INF/accesstransformer.cfg')
+
+    // Default run configurations.
+    // These can be tweaked, removed, or duplicated as needed.
+    runs {
+        client {
+            client()
+
+            // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+
+        clientAutoJoin {
+            client()
+
+            gameDirectory = project.file('run/client')
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            programArguments.addAll '--quickPlayMultiplayer', '127.0.0.1:25565'
+        }
+
+        server {
+            server()
+            programArgument '--nogui'
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+
+        serverAutoJoin {
+            server()
+
+            gameDirectory = project.file('run/server')
+            programArgument '--nogui'
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+
+        // This run config launches GameTestServer and runs all registered gametests, then exits.
+        // By default, the server will crash when no gametests are provided.
+        // The gametest system is also enabled by default for other run configs under the /test command.
+        gameTestServer {
+            type = "gameTestServer"
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+
+        data {
+            // 使用 clientData 运行配置；具体生成内容由事件中注册的 Provider 决定
+            clientData()
+
+            // example of overriding the workingDirectory set in configureEach above, uncomment if you want to use it
+            // gameDirectory = project.file('run-data')
+
+            // Specify the modid for data generation, where to output the resulting resource, and where to look for existing resources.
+            programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
+        }
+
+        // applies to all the run configs above
+        configureEach {
+            // Recommended logging data for a userdev environment
+            // The markers can be added/remove as needed separated by commas.
+            // "SCAN": For mods scan.
+            // "REGISTRIES": For firing of registry events.
+            // "REGISTRYDUMP": For getting the contents of all registries.
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+
+            // Recommended logging level for the console
+            // You can set various levels here.
+            // Please read: https://stackoverflow.com/questions/2031163/when-to-use-the-different-log-levels
+            logLevel = org.slf4j.event.Level.DEBUG
+        }
+    }
+
+    mods {
+        // define mod <-> source bindings
+        // these are used to tell the game which sources are for which mod
+        // mostly optional in a single mod project
+        // but multi mod projects should define one per mod
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+// 不直接将 datagen 目录声明为资源源，避免与 runData/compile 形成依赖环。
+// datagen 产物通过下方的 mergeGeneratedResources 任务在打包前合并进入 build 目录。
+
+
+dependencies {
+    var jeiMinecraftVersion = project.jei_minecraft_version
+
+    // Example mod dependency with JEI
+    // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
+    compileOnly "mezz.jei:jei-${jeiMinecraftVersion}-common-api:${jei_version}"
+    compileOnly "mezz.jei:jei-${jeiMinecraftVersion}-neoforge-api:${jei_version}"
+    runtimeOnly "mezz.jei:jei-${jeiMinecraftVersion}-neoforge:${jei_version}"
+
+    // creepebucketlib 从 GitHub Packages 解析，禁止改为本地 jar 或 project 依赖
+    implementation "org.creepebucket:creepebucketlib:${creepebucketlib_version}"
+}
+
+// This block of code expands all declared replace properties in the specified resource targets.
+// A missing property will result in an error. Properties are expanded using ${} Groovy notation.
+var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
+    var replaceProperties = [minecraft_version      : minecraft_version,
+                             minecraft_version_range: minecraft_version_range,
+                             neo_version            : neo_version,
+                             neo_version_range      : neo_version_range,
+                             loader_version_range   : loader_version_range,
+                             mod_id                 : mod_id,
+                             mod_name               : mod_name,
+                             mod_license            : mod_license,
+                             mod_version            : mod_version,
+                             mod_authors            : mod_authors,
+                             mod_description        : mod_description]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from "src/main/templates"
+    into "build/generated/sources/modMetadata"
+}
+
+// Include the output of "generateModMetadata" as an input directory for the build
+// this works with both building through Gradle and the IDE.
+sourceSets.main.resources.srcDir generateModMetadata
+// To avoid having to run "generateModMetadata" manually, make it run on every project reload
+neoForge.ideSyncTask generateModMetadata
+
+// Example configuration to allow publishing using the maven-publish plugin
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            artifactId = mod_id
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            url "file://${project.projectDir}/repo"
+        }
+    }
+}
+
+// IDEA no longer automatically downloads sources/javadoc jars for dependencies, so we need to explicitly enable the behavior.
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}
+
+// 生成资产目录（供清理与输出声明使用）
+def generatedAssetsDir = file("src/main/resources/assets/${project.mod_id}/textures/gui")
+
+// 操作系统检测
+def osName = System.getProperty('os.name').toLowerCase()
+def isWindows = osName.contains('windows')
+
+// 非 Windows 平台才进行资产切片
+if (!isWindows) {
+    // 清理已生成资产（可选）
+    tasks.register('cleanGeneratedAssets', Delete) {
+        group = 'assets'
+        description = '删除由构建脚本生成的资源目录（textures/gui）'
+        delete generatedAssetsDir
+    }
+
+    tasks.register('buildAssets', Exec) {
+        group = 'assets'
+        description = '生成 GUI 资产（通过 bash 执行切片脚本）'
+        workingDir file('src/main/resources')
+        dependsOn 'cleanGeneratedAssets'
+
+        commandLine 'bash', 'buildassets.sh'
+
+        // 增量构建：声明输入与输出，确保变更时会重新运行
+        inputs.files(
+                file('src/main/resources/buildassets.sh'),
+                file('src/main/resources/build_assets.py'),
+                file('src/main/resources/buildconfig.json'),
+                file('src/main/resources/gui_big.png'),
+                file('src/main/resources/items_blocks_big.png')
+        )
+        outputs.dir(generatedAssetsDir)
+    }
+
+    // 仅在 runClient / build 前生成 GUI 资产，避免与 runData 的依赖链形成环
+    tasks.named('runClient') { dependsOn 'buildAssets' }
+    tasks.named('runClientAutoJoin') { dependsOn 'buildAssets' }
+    tasks.named('build') { dependsOn 'buildAssets' }
+}
+
+// 声明 processResources 明确依赖 buildAssets，消除 Gradle 关于隐式依赖的校验错误
+tasks.named('processResources') {
+    if (!isWindows) {
+        dependsOn 'buildAssets'
+    }
+    // 不直接依赖 runData，避免与 classes/compile 形成隐式环
+    // 避免资源重复（例如 datagen 与手写资源重名）导致失败
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    // 不将本地虚拟环境与构建脚本打入资源
+    exclude('.venv-assets/**')
+    exclude('build_assets.py')
+    exclude('buildassets.sh')
+    exclude('buildassets.ps1')
+    exclude('buildconfig.json')
+    exclude('gui_big.png')
+    exclude('items_blocks_big.png')
+}
+
+// 如需在更多任务前生成资产，可启用下方示例（可能导致 runData 环依赖，谨慎开启）
+// 示例：
+// [tasks.named('processResources'),
+//  tasks.named('classes'),
+//  tasks.named('compileJava'),
+//  tasks.named('jar')
+// ].each { provider ->
+//     provider.configure { dependsOn 'buildAssets' }
+// }
+// 注意：千万不要对 'downloadAssets' 或 'prepareClientRun' 添加 dependsOn 'buildAssets'，
+// 否则会出现 runData -> prepareDataRun -> downloadAssets -> buildAssets -> runData 的循环。
+
+// 将 datagen 产物合并进构建资源目录，避免环依赖（classes -> processResources -> runData -> classes）
+// 注意：仅对 data 子目录使用 Sync（覆盖并清理过期标签等），assets 用 Copy（避免误删非 datagen 资源）
+tasks.register('syncGeneratedData', Sync) {
+    group = 'datagen'
+    description = '同步 src/generated/resources/data 到 build/resources/main/data（清理过期数据）'
+    from 'src/generated/resources/data'
+    into "$buildDir/resources/main/data"
+}
+
+tasks.register('copyGeneratedAssets', Copy) {
+    group = 'datagen'
+    description = '拷贝 src/generated/resources/assets 到 build/resources/main/assets'
+    from 'src/generated/resources/assets'
+    into "$buildDir/resources/main/assets"
+}
+
+tasks.register('syncGeneratedDataToMain', Sync) {
+    group = 'datagen'
+    description = '同步 src/generated/resources/data 到 src/main/resources/data（清理过期数据）'
+    from 'src/generated/resources/data'
+    into "src/main/resources/data"
+}
+
+tasks.register('copyGeneratedAssetsToMain', Copy) {
+    group = 'datagen'
+    description = '拷贝 src/generated/resources/assets 到 src/main/resources/assets'
+    from 'src/generated/resources/assets'
+    into "src/main/resources/assets"
+}
+
+tasks.named('jar') {
+    dependsOn 'syncGeneratedData'
+    dependsOn 'copyGeneratedAssets'
+}
+tasks.named('build') {
+    dependsOn 'syncGeneratedData'
+    dependsOn 'copyGeneratedAssets'
+}
+
+// 开发环境：运行客户端前先生成数据，确保标签/模型等可用
+tasks.named('runClient') {
+    dependsOn 'runData'
+    dependsOn 'syncGeneratedData'
+    dependsOn 'copyGeneratedAssets'
+}
+
+tasks.named('runClientAutoJoin') {
+    dependsOn 'runData'
+    dependsOn 'syncGeneratedData'
+    dependsOn 'copyGeneratedAssets'
+}
+
+tasks.named('runServer') {
+    dependsOn 'runData'
+    dependsOn 'syncGeneratedData'
+    dependsOn 'copyGeneratedAssets'
+}
+
+tasks.named('runServerAutoJoin') {
+    dependsOn 'runData'
+    dependsOn 'syncGeneratedData'
+    dependsOn 'copyGeneratedAssets'
+}
+
+tasks.named('runData') {
+    finalizedBy 'syncGeneratedDataToMain'
+    finalizedBy 'copyGeneratedAssetsToMain'
+}
+
+// 顺序约束：数据同步在处理资源后执行，避免不确定顺序
+tasks.named('syncGeneratedData') { mustRunAfter tasks.named('processResources') }
+tasks.named('copyGeneratedAssets') { mustRunAfter tasks.named('processResources') }
+tasks.named('syncGeneratedData') { mustRunAfter tasks.named('runData') }
+tasks.named('copyGeneratedAssets') { mustRunAfter tasks.named('runData') }
+tasks.named('syncGeneratedDataToMain') { mustRunAfter tasks.named('runData') }
+tasks.named('copyGeneratedAssetsToMain') { mustRunAfter tasks.named('runData') }
+
+tasks.register('runClientServer') {
+    group = 'run'
+    description = '同时启动开发服务端与客户端，并让客户端自动进服（127.0.0.1:25565）'
+    notCompatibleWithConfigurationCache('需要交互式 stdin 与多进程管理')
+    def projectDir = project.layout.projectDirectory.asFile
+
+    doLast {
+        def serverPort = 25565
+        try {
+            def portCheckSocket = new ServerSocket(serverPort)
+            portCheckSocket.close()
+        } catch (Exception e) {
+            throw new GradleException("server_port_in_use: ${serverPort}", e)
+        }
+
+        def serverCommand = isWindows
+                ? ['cmd', '/c', 'gradlew.bat', 'runServerAutoJoin', '--no-daemon']
+                : ['./gradlew', 'runServerAutoJoin', '--no-daemon']
+        def clientCommand = isWindows
+                ? ['cmd', '/c', 'gradlew.bat', 'runClientAutoJoin', '--no-daemon']
+                : ['./gradlew', 'runClientAutoJoin', '--no-daemon']
+
+        def startProcess = { List<String> command ->
+            new ProcessBuilder(command)
+                    .directory(projectDir)
+                    .redirectErrorStream(true)
+                    .start()
+        }
+
+        def pipeLogs = { Process process, String prefix ->
+            Thread.startDaemon {
+                process.inputStream.withReader { reader ->
+                    reader.eachLine { line ->
+                        println "${prefix} ${line}"
+                    }
+                }
+            }
+        }
+
+        def terminateProcessTree = { Process process ->
+            def handle = process.toHandle()
+            def handles = (handle.descendants().toList() + handle).reverse()
+            handles.each { it.destroy() }
+            handles.each { it.destroyForcibly() }
+        }
+
+        Process serverProcess = null
+        Process clientProcess = null
+
+        try {
+            serverProcess = startProcess(serverCommand)
+            pipeLogs(serverProcess, '[server]')
+
+            def serverInputWriter = new BufferedWriter(new OutputStreamWriter(serverProcess.outputStream))
+            Thread.startDaemon {
+                def inputReader = new BufferedReader(new InputStreamReader(System.in))
+                String line
+                while ((line = inputReader.readLine()) != null) {
+                    if (!serverProcess.isAlive()) {
+                        break
+                    }
+                    serverInputWriter.write(line)
+                    serverInputWriter.newLine()
+                    serverInputWriter.flush()
+                }
+            }
+
+            Thread.sleep(3000)
+
+            clientProcess = startProcess(clientCommand)
+            pipeLogs(clientProcess, '[client]')
+
+            while (serverProcess.isAlive()) {
+                Thread.sleep(200)
+            }
+        } finally {
+            if (clientProcess != null && clientProcess.isAlive()) {
+                terminateProcessTree(clientProcess)
+            }
+            if (serverProcess != null && serverProcess.isAlive()) {
+                terminateProcessTree(serverProcess)
+            }
+        }
+    }
+}

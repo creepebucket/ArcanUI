@@ -1,0 +1,7 @@
+[
+  {
+    "gui_big.png": [
+      {"from_top_left": [0, 0], "from_bottom_right": [287, 47], "target_img_path": "assets/arcanui/textures/gui/icons/mc_logo.png"}
+    ]
+  }
+]
