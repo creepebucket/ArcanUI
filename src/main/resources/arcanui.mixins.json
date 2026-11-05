@@ -6,7 +6,10 @@
   "mixins": [
   ],
   "client": [
-    "AbstractContainerScreenMixin"
+    "AbstractContainerScreenMixin",
+    "CraftingScreenMixin",
+    "ScreenMixin",
+    "TitleScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1

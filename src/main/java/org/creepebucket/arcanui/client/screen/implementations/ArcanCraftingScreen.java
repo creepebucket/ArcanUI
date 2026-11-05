@@ -1,6 +1,5 @@
 package org.creepebucket.arcanui.client.screen.implementations;
 
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.CraftingScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
@@ -21,13 +20,6 @@ public class ArcanCraftingScreen extends CraftingScreen implements ArcanScreen {
     }
 
     @Override
-    protected void init() {
-        super.init();
-
-        this.clearWidgets();
-    }
-
-    @Override
     public void buildUi(ArcanUiRuntime ui) {
     }
 
@@ -41,13 +33,5 @@ public class ArcanCraftingScreen extends CraftingScreen implements ArcanScreen {
 
     @Override
     public void disposeUi() {
-    }
-
-    @Override
-    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-    }
-
-    @Override
-    protected void extractLabels(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
     }
 }

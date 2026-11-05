@@ -1,6 +1,9 @@
 package org.creepebucket.arcanui.client.screen.lib;
 
+import java.util.List;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -20,6 +23,10 @@ public final class ArcanScreenEvents {
             return;
         }
 
+        for (GuiEventListener widget : List.copyOf(event.getListenersList())) {
+            if (widget.getClass().getName().matches("net\\.(minecraft|neoforged)\\..*")) event.removeListener(widget);
+        }
+
         screen.ui().begin(event.getScreen());
         screen.buildUi(screen.ui());
     }
@@ -31,6 +38,15 @@ public final class ArcanScreenEvents {
             ui.renderBackground(event.getGuiGraphics(), event.getMouseX(), event.getMouseY());
             screen.applyBounds(ui.left, ui.top, ui.width, ui.height);
         }
+    }
+
+    @SubscribeEvent
+    public static void onRenderPost(ScreenEvent.Render.Post event) {
+        if (!(event.getScreen() instanceof ArcanScreen screen) || event.getScreen() instanceof AbstractContainerScreen<?>) {
+            return;
+        }
+
+        screen.ui().renderForeground(event.getGuiGraphics(), event.getMouseX(), event.getMouseY(), event.getPartialTick());
     }
 
     @SubscribeEvent

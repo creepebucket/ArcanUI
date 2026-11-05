@@ -5,12 +5,14 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.gui.screens.inventory.CraftingScreen;
+import net.minecraft.client.gui.screens.options.LanguageSelectScreen;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import org.creepebucket.arcanui.Arcanui;
 import org.creepebucket.arcanui.client.screen.implementations.ArcanCraftingScreen;
+import org.creepebucket.arcanui.client.screen.implementations.ArcanLanguageSelectScreen;
 import org.creepebucket.arcanui.client.screen.implementations.ArcanTitleScreen;
 
 @EventBusSubscriber(modid = Arcanui.MODID, value = Dist.CLIENT)
@@ -25,6 +27,17 @@ public final class ArcanScreenHooks {
                 @Override
                 public Screen replace(Screen screen, Minecraft minecraft) {
                     return new ArcanTitleScreen();
+                }
+            },
+            new ArcanScreenReplacer() {
+                @Override
+                public boolean matches(Screen screen) {
+                    return screen instanceof LanguageSelectScreen && !(screen instanceof ArcanLanguageSelectScreen);
+                }
+
+                @Override
+                public Screen replace(Screen screen, Minecraft minecraft) {
+                    return new ArcanLanguageSelectScreen(minecraft.screen, minecraft.options, minecraft.getLanguageManager());
                 }
             },
             new ArcanScreenReplacer() {

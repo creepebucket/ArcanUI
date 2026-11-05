@@ -47,6 +47,14 @@ public abstract class AbstractContainerScreenMixin {
 //        }
 //    }
 
+    // 干掉原版容器界面的标题和背包文字
+    @Inject(method = "extractLabels", at = @At("HEAD"), cancellable = true)
+    private void arcanui$skipVanillaLabels(GuiGraphicsExtractor graphics, int mouseX, int mouseY, CallbackInfo ci) {
+        if ((Object) this instanceof ArcanScreen) {
+            ci.cancel();
+        }
+    }
+
     /**
      * 把 {@link ClientSlotManager} 里记录的客户端坐标写回槽位，原版 {@code extractSlots} 只认 {@code slot.x/y}。
      */

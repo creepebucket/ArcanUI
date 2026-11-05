@@ -100,6 +100,5 @@ public final class ArcanUiRuntime implements WidgetManager {
 
     public void destroy() {
         resetWidgets();
-        this.screen = null;
     }
 }

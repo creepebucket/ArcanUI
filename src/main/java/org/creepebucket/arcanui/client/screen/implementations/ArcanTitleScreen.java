@@ -3,7 +3,6 @@ package org.creepebucket.arcanui.client.screen.implementations;
 import com.mojang.realmsclient.RealmsMainScreen;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.CreditsAndAttributionScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
@@ -28,11 +27,7 @@ import org.creepebucket.creepebucketlib.lib.widgets.TextButtonWidget;
 import org.creepebucket.creepebucketlib.lib.widgets.TextWidget;
 import org.creepebucket.creepebucketlib.lib.widgets.TextureWidget;
 
-import static org.creepebucket.creepebucketlib.lib.api.Coordinate.fromBottomLeft;
-import static org.creepebucket.creepebucketlib.lib.api.Coordinate.fromBottomRight;
-import static org.creepebucket.creepebucketlib.lib.api.Coordinate.fromCenter;
-import static org.creepebucket.creepebucketlib.lib.api.Coordinate.fromCenterTop;
-import static org.creepebucket.creepebucketlib.lib.api.Coordinate.fromTopLeft;
+import static org.creepebucket.creepebucketlib.lib.api.Coordinate.*;
 
 public class ArcanTitleScreen extends TitleScreen implements ArcanScreen {
     public final ArcanUiRuntime ui = new ArcanUiRuntime();
@@ -40,13 +35,6 @@ public class ArcanTitleScreen extends TitleScreen implements ArcanScreen {
     @Override
     public ArcanUiRuntime ui() {
         return this.ui;
-    }
-
-    @Override
-    protected void init() {
-        super.init();
-
-        this.clearWidgets();
     }
 
     @Override
@@ -62,17 +50,17 @@ public class ArcanTitleScreen extends TitleScreen implements ArcanScreen {
 
         // 按钮
         ui.addWidget(new TextButtonWidget(fromCenter(0, -48), fromTopLeft(200, 20), Component.translatable("menu.singleplayer"),
-                () -> minecraft.setScreen(new SelectWorldScreen(this))).centerAlign().centerAlignY().addAnimation(new Animation.FadeIn.FromBottom(0.3), 0));
+                playQuitAnimationAndDo(() -> minecraft.setScreen(new SelectWorldScreen(this)))).centerAlign().centerAlignY().addAnimation(new Animation.FadeIn.FromBottom(0.3), 0));
 
         ui.addWidget(new TextButtonWidget(fromCenter(0, -24), fromTopLeft(200, 20), Component.translatable("menu.multiplayer"),
-                () -> minecraft.setScreen(minecraft.options.skipMultiplayerWarning
-                        ? new JoinMultiplayerScreen(this) : new SafetyScreen(this))).centerAlign().centerAlignY().addAnimation(new Animation.FadeIn.FromBottom(0.3), 0.1));
+                playQuitAnimationAndDo(() -> minecraft.setScreen(minecraft.options.skipMultiplayerWarning
+                        ? new JoinMultiplayerScreen(this) : new SafetyScreen(this)))).centerAlign().centerAlignY().addAnimation(new Animation.FadeIn.FromBottom(0.3), 0.1));
 
         ui.addWidget(new TextButtonWidget(fromCenter(0, 0), fromTopLeft(200, 20), Component.translatable("menu.online"),
-                () -> minecraft.setScreen(new RealmsMainScreen(this))).centerAlign().centerAlignY().addAnimation(new Animation.FadeIn.FromBottom(0.3), 0.2));
+                playQuitAnimationAndDo(() -> minecraft.setScreen(new RealmsMainScreen(this)))).centerAlign().centerAlignY().addAnimation(new Animation.FadeIn.FromBottom(0.3), 0.2));
 
         TextButtonWidget mods = new TextButtonWidget(fromCenter(inIde ? 2 : 0, 24), fromTopLeft(inIde ? 98 : 200, 20), Component.translatable("fml.menu.mods"),
-                () -> minecraft.setScreen(new ModListScreen(this)));
+                playQuitAnimationAndDo(() -> minecraft.setScreen(new ModListScreen(this))));
 
         if (inIde) {
             mods.leftAlign();
@@ -82,20 +70,20 @@ public class ArcanTitleScreen extends TitleScreen implements ArcanScreen {
         ui.addWidget(mods.centerAlignY().addAnimation(new Animation.FadeIn.FromBottom(0.3), 0.3));
 
         if (inIde) ui.addWidget(new TextButtonWidget(fromCenter(-2, 24), fromTopLeft(98, 20), Component.literal("Create Test World"),
-                () -> CreateWorldScreen.testWorld(minecraft, () -> minecraft.setScreen(this))).rightAlign().centerAlignY().addAnimation(new Animation.FadeIn.FromBottom(0.3), 0.3));
+                playQuitAnimationAndDo(() -> CreateWorldScreen.testWorld(minecraft, () -> minecraft.setScreen(this)))).rightAlign().centerAlignY().addAnimation(new Animation.FadeIn.FromBottom(0.3), 0.3));
 
         ui.addWidget(new TextButtonWidget(fromCenter(-2, 60), fromTopLeft(98, 20), Component.translatable("menu.options"),
-                () -> minecraft.setScreen(new OptionsScreen(this, minecraft.options, false))).rightAlign().centerAlignY().addAnimation(new Animation.FadeIn.FromBottom(0.3), 0.4));
+                playQuitAnimationAndDo(() -> minecraft.setScreen(new OptionsScreen(this, minecraft.options, false)))).rightAlign().centerAlignY().addAnimation(new Animation.FadeIn.FromBottom(0.3), 0.4));
 
         ui.addWidget(new TextButtonWidget(fromCenter(2, 60), fromTopLeft(98, 20), Component.translatable("menu.quit"),
-                minecraft::stop).leftAlign().centerAlignY().addAnimation(new Animation.FadeIn.FromBottom(0.3), 0.4).mainColor(ModColors.MAIN_COLOR_T.withAlpha(0xbf)).textColor(ModColors.TEXT_COLOR_T));
+                playQuitAnimationAndDo(minecraft::stop)).leftAlign().centerAlignY().addAnimation(new Animation.FadeIn.FromBottom(0.3), 0.4).mainColor(ModColors.MAIN_COLOR_T.withAlpha(0xbf)).textColor(ModColors.TEXT_COLOR_T));
 
         ui.addWidget(new ImageButtonWidget(fromCenter(-114, 60), fromTopLeft(15, 15), Identifier.withDefaultNamespace("textures/gui/sprites/icon/language.png"),
-                Identifier.withDefaultNamespace("textures/gui/sprites/icon/language.png"), () -> minecraft.setScreen(new LanguageSelectScreen(this, minecraft.options, minecraft.getLanguageManager())))
+                Identifier.withDefaultNamespace("textures/gui/sprites/icon/language.png"), playQuitAnimationAndDo(() -> minecraft.setScreen(new LanguageSelectScreen(this, minecraft.options, minecraft.getLanguageManager()))))
                 .centerAlign().centerAlignY().mainColor(0xbfffffff).addAnimation(new Animation.FadeIn.FromLeft(0.3), 0.5));
 
         ui.addWidget(new ImageButtonWidget(fromCenter(114, 60), fromTopLeft(15, 15), Identifier.withDefaultNamespace("textures/gui/sprites/icon/accessibility.png"),
-                Identifier.withDefaultNamespace("textures/gui/sprites/icon/accessibility.png"), () -> minecraft.setScreen(new AccessibilityOptionsScreen(this, minecraft.options)))
+                Identifier.withDefaultNamespace("textures/gui/sprites/icon/accessibility.png"), playQuitAnimationAndDo(() -> minecraft.setScreen(new AccessibilityOptionsScreen(this, minecraft.options))))
                 .centerAlign().centerAlignY().mainColor(0xbfffffff).addAnimation(new Animation.FadeIn.FromRight(0.3), 0.5));
 
         // 品牌信息
@@ -104,12 +92,6 @@ public class ArcanTitleScreen extends TitleScreen implements ArcanScreen {
 
         // 版权信息
         ui.addWidget(new TextWidget(fromBottomRight(-2, -10 - this.font.lineHeight - 1), Component.literal("ArcanUI " + ModList.get().getModContainerById(Arcanui.MODID).orElseThrow().getModInfo().getVersion())).rightAlign().addAnimation(new Animation.FadeIn.FromRight(0.3), 0.4));
-        ui.addWidget(new TextWidget(fromBottomRight(-2, -10), Component.translatable("title.credits")).rightAlign().addClickBehavior(() -> minecraft.setScreen(new CreditsAndAttributionScreen(this))).addAnimation(new Animation.FadeIn.FromRight(0.3), 0.5));
-    }
-
-    @Override
-    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-        this.extractPanorama(graphics, partialTick);
-        this.ui.renderForeground(graphics, mouseX, mouseY, partialTick);
+        ui.addWidget(new TextWidget(fromBottomRight(-2, -10), Component.translatable("title.credits")).rightAlign().addClickBehavior(playQuitAnimationAndDo(() -> minecraft.setScreen(new CreditsAndAttributionScreen(this)))).addAnimation(new Animation.FadeIn.FromRight(0.3), 0.5));
     }
 }
