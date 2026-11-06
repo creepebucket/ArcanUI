@@ -17,6 +17,13 @@ import org.creepebucket.arcanui.client.screen.implementations.ArcanTitleScreen;
 
 @EventBusSubscriber(modid = Arcanui.MODID, value = Dist.CLIENT)
 public final class ArcanScreenHooks {
+
+    public interface ArcanScreenReplacer {
+        boolean matches(Screen screen);
+
+        Screen replace(Screen screen, Minecraft minecraft);
+    }
+
     private static final List<ArcanScreenReplacer> REPLACERS = List.of(
             new ArcanScreenReplacer() {
                 @Override
