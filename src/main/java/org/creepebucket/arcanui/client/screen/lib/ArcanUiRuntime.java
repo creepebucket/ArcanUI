@@ -19,6 +19,7 @@ public final class ArcanUiRuntime implements WidgetManager {
     public int top;
     public int width;
     public int height;
+    public boolean quitting;
 
     @Override
     public Widget.Root getRoot() {
@@ -37,6 +38,7 @@ public final class ArcanUiRuntime implements WidgetManager {
 
     public void begin(Screen screen) {
         this.screen = screen;
+        this.quitting = false;
         Coordinate.updateContext(screen.width, screen.height, 0, 0);
 
         resetWidgets();

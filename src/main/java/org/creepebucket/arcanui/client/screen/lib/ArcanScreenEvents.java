@@ -91,6 +91,20 @@ public final class ArcanScreenEvents {
     }
 
     @SubscribeEvent
+    public static void onKeyPressedPre(ScreenEvent.KeyPressed.Pre event) {
+        if (!(event.getScreen() instanceof ArcanScreen screen) || !event.getKeyEvent().isEscape()) {
+            return;
+        }
+
+        if (!event.getScreen().shouldCloseOnEsc()) {
+            return;
+        }
+
+        screen.playQuitAnimationAndQuit();
+        event.setCanceled(true);
+    }
+
+    @SubscribeEvent
     public static void onKeyPressed(ScreenEvent.KeyPressed.Post event) {
         if (event.getScreen() instanceof ArcanScreen screen) {
             screen.ui().keyPressed(event.getKeyEvent());

@@ -31,6 +31,15 @@ public interface ArcanScreen extends WidgetManager {
         };
     }
 
+    default void playQuitAnimationAndQuit() {
+        if (ui().quitting) {
+            return;
+        }
+
+        ui().quitting = true;
+        playQuitAnimationAndDo(((Screen) this)::onClose).run();
+    }
+
     class DelayAndDo extends Animation {
         Runnable things;
 

@@ -125,13 +125,16 @@ public class ArcanLanguageSelectScreen extends LanguageSelectScreen implements A
 
         @Override
         public boolean mouseClicked(MouseButtonEvent event, boolean fromMouse) {
-            if (isInBounds(event.x(), event.y()) && parent.parent.x() <= event.x() && event.x() <= parent.parent.x() + parent.parent.w() && parent.parent.y() <= event.y() && event.y() <=parent.parent.y() + parent.parent.h()) {
+            if (!(parent.parent.x() <= event.x() && event.x() <= parent.parent.x() + parent.parent.w() && parent.parent.y() <= event.y() && event.y() <=parent.parent.y() + parent.parent.h())) return false;
+
+            if (isInBounds(event.x(), event.y())) {
                 selectionHighlight.dw.set(w());
                 ((ArcanLanguageSelectScreen) screen).selectedLanguage = language;
+                return true;
             } else {
                 selectionHighlight.dw.set(0);
+                return false;
             }
-            return false;
         }
     }
 
