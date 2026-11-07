@@ -2,6 +2,7 @@ package org.creepebucket.arcanui.mixin;
 
 import net.minecraft.client.OptionInstance;
 import net.minecraft.client.gui.components.OptionsList;
+import net.minecraft.client.gui.components.StringWidget;
 import net.minecraft.client.gui.screens.options.OptionsSubScreen;
 import net.minecraft.network.chat.Component;
 import org.creepebucket.arcanui.ModColors;
@@ -15,7 +16,6 @@ import org.spongepowered.asm.mixin.Shadow;
 
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 import static java.lang.Math.clamp;
@@ -52,6 +52,9 @@ public abstract class OptionsSubScreenMixin implements ArcanOptionsScreen {
 
         for (OptionsList.AbstractEntry row : this.list.children()) {
             if (row instanceof OptionsList.HeaderEntry entry) {
+                div.addChild(new RectangleWidget(fromTopLeft(0, accumulatedDy + 25), fromTopLeft(283, 6)).bottomAlignY().mainColor(ModColors.MAIN_COLOR_M.withAlpha(0x3f)).addAnimation(new Animation.FadeIn.FromRight(0.3), (double) accumulatedDy / 1000));
+                div.addChild(new TextWidget(fromTopLeft(0, accumulatedDy + 25), ((StringWidget) entry.children().getFirst()).getMessage()).scaled(1.5).noShadow().bottomAlignY().addAnimation(new Animation.FadeIn.FromLeft(0.3), (double) accumulatedDy / 1000));
+                accumulatedDy += 30;
                 continue;
             }
 
@@ -86,7 +89,7 @@ public abstract class OptionsSubScreenMixin implements ArcanOptionsScreen {
 
                     div.addChild(new OptionsSubScreenWidgets.OptionsTitleWidget(fromTopLeft(0, dy + 2), fromTopLeft(16, 16), () -> {
                         setting.current = setting.instance.get();
-                        setting.box.box.setValue(String.format(Locale.ROOT, "%.2f", setting.current));
+                        setting.text.setText(OptionsSubScreenWidgets.displayText(setting.instance, setting.current));
                         commandQueue.remove(instance);
                     }, setting, commandQueue, instance).addAnimation(new Animation.FadeIn.FromLeft(0.3), (double) dy / 1000));
                 }
@@ -106,17 +109,17 @@ public abstract class OptionsSubScreenMixin implements ArcanOptionsScreen {
         ui.addWidget(new RectangleWidget(fromCenterBottom(0, -48), fromTopLeft(290, 1)).centerAlign().addAnimation(new Animation.FadeIn.FromBottom(0.3), 0));
 
         // 保存退出按钮
-        ui.addWidget(new TextButtonWidget(fromCenterBottom(-55, -30), fromTopLeft(90, 20), Component.literal("应用更改"), () -> {
+        ui.addWidget(new TextButtonWidget(fromCenterBottom(-55, -30), fromTopLeft(90, 20), Component.translatable("gui.options.apply_changes"), () -> {
             for (Runnable i : commandQueue.values()) i.run();
             commandQueue.clear();
         }).mainColor(0x3fffffff).bgColor(0x7f000000).rightAlign().addAnimation(new Animation.FadeIn.FromBottom(0.3), 0.2));
 
-        ui.addWidget(new TextButtonWidget(fromCenterBottom(0, -30), fromTopLeft(90, 20), Component.literal("丢弃并退出"), () -> {
+        ui.addWidget(new TextButtonWidget(fromCenterBottom(0, -30), fromTopLeft(90, 20), Component.translatable("gui.options.discard_and_exit"), () -> {
             commandQueue.clear();
             playQuitAnimationAndQuit();
         }).mainColor(ModColors.MAIN_COLOR_T.withAlpha(0x7f)).bgColor(0x7f000000).textColor(ModColors.TEXT_COLOR_T).centerAlign().addAnimation(new Animation.FadeIn.FromBottom(0.3), 0.1));
 
-        ui.addWidget(new TextButtonWidget(fromCenterBottom(55, -30), fromTopLeft(90, 20), Component.literal("保存并退出"), () -> {
+        ui.addWidget(new TextButtonWidget(fromCenterBottom(55, -30), fromTopLeft(90, 20), Component.translatable("gui.options.save_and_exit"), () -> {
             for (Runnable i : commandQueue.values()) i.run();
             commandQueue.clear();
             playQuitAnimationAndQuit();

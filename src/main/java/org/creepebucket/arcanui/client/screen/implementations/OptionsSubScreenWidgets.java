@@ -14,13 +14,11 @@ import org.creepebucket.creepebucketlib.lib.api.*;
 import org.creepebucket.creepebucketlib.lib.api.widgets.Clickable;
 import org.creepebucket.creepebucketlib.lib.api.widgets.Lifecycle;
 import org.creepebucket.creepebucketlib.lib.api.widgets.Tickable;
-import org.creepebucket.creepebucketlib.lib.widgets.InputBoxWidget;
 import org.creepebucket.creepebucketlib.lib.widgets.RectangleWidget;
 import org.creepebucket.creepebucketlib.lib.widgets.TextWidget;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.stream.IntStream;
 
@@ -28,6 +26,12 @@ import static java.lang.Math.clamp;
 import static org.creepebucket.creepebucketlib.lib.api.Coordinate.*;
 
 public class OptionsSubScreenWidgets {
+    public static <T> Component displayText(OptionInstance<T> instance, T value) {
+        String title = instance.caption.getString();
+        String full = instance.toString.apply(value).getString();
+        return Component.literal(full.startsWith(title) ? full.substring(title.length()).replaceFirst("^\\s*[:：]\\s*", "") : full);
+    }
+
     private static <T> void queueOptionChange(Screen screen, OptionInstance<T> instance, T value) {
         var commandQueue = ((ArcanOptionsScreen) screen).commandQueue();
 
@@ -235,16 +239,14 @@ public class OptionsSubScreenWidgets {
         }
 
         public Component displayText(Object value) {
-            String title = instance.caption.getString();
-            String full = instance.toString.apply(value).getString();
-            return Component.literal(full.startsWith(title) ? full.substring(title.length()).replaceFirst("^\\s*[:：]\\s*", "") : full);
+            return OptionsSubScreenWidgets.displayText(instance, value);
         }
     }
 
     public static class SettingDoubleRangeWidget extends Widget implements Lifecycle {
         public OptionInstance<Double> instance;
         public OptionInstance.SliderableValueSet<Double> slider;
-        public InputBoxWidget box;
+        public TextWidget text;
         public double current;
 
         @SuppressWarnings("unchecked")
@@ -259,30 +261,15 @@ public class OptionsSubScreenWidgets {
             slider = (OptionInstance.SliderableValueSet<Double>) instance.values();
             current = instance.get();
 
-            box = new InputBoxWidget(CENTER, fromBottomRight(-4 * h() - 4, 0), String.format(Locale.ROOT, "%.2f", current), 32);
-            addChild(box.mainColor(0).centerAlign().centerAlignY());
-
-            box.box.setResponder((s) -> {
-                if (s.isEmpty()) return;
-
-                try {
-                    double next = Double.parseDouble(s);
-                    if (slider.validateValue(next).isEmpty()) {
-                        box.box.setValue(String.format(Locale.ROOT, "%.2f", current));
-                        return;
-                    }
-                    current = next;
-                    queueOptionChange(screen, instance, current);
-                } catch (NumberFormatException _) {
-                    box.box.setValue(String.format(Locale.ROOT, "%.2f", current));
-                }
-            });
+            addChild(new RectangleWidget(fromTopLeft(2 * h() + 2, 0), fromBottomRight(-4 * h() - 4, 0)).applyTheme(ThemeTemplate.DARK_BG));
+            text = new TextWidget(CENTER, displayText(instance, current)).noShadow();
+            addChild(text.centerAlign().centerAlignY());
 
             addChild(new HoverableRectWidget(fromTopLeft(0, 0), fromTopLeft(h(), h()), 0x7f000000)).addClickBehavior(
                     () -> {
                         current = slider.fromSliderValue(0);
                         queueOptionChange(screen, instance, current);
-                        box.box.setValue(String.format(Locale.ROOT, "%.2f", current));
+                        text.setText(displayText(instance, current));
                     }
             );
             addChild(new TextWidget(fromTopLeft(h()/2, h()/2), Component.literal("|<")).noShadow().centerAlignY().centerAlign());
@@ -290,7 +277,7 @@ public class OptionsSubScreenWidgets {
                     () -> {
                         current = slider.fromSliderValue(clamp(slider.toSliderValue(current) - (Minecraft.getInstance().hasShiftDown() ? 0.1 : 0.01), 0, 1));
                         queueOptionChange(screen, instance, current);
-                        box.box.setValue(String.format(Locale.ROOT, "%.2f", current));
+                        text.setText(displayText(instance, current));
                     }
             );
             addChild(new TextWidget(fromTopLeft(h() + h()/2 + 1, h()/2), Component.literal("<")).noShadow().centerAlignY().centerAlign());
@@ -299,7 +286,7 @@ public class OptionsSubScreenWidgets {
                     () -> {
                         current = slider.fromSliderValue(clamp(slider.toSliderValue(current) + (Minecraft.getInstance().hasShiftDown() ? 0.1 : 0.01), 0, 1));
                         queueOptionChange(screen, instance, current);
-                        box.box.setValue(String.format(Locale.ROOT, "%.2f", current));
+                        text.setText(displayText(instance, current));
                     }
             );
             addChild(new TextWidget(fromTopRight(-h() - h()/2 - 1, h()/2), Component.literal(">")).noShadow().centerAlignY().centerAlign());
@@ -307,7 +294,7 @@ public class OptionsSubScreenWidgets {
                     () -> {
                         current = slider.fromSliderValue(1);
                         queueOptionChange(screen, instance, current);
-                        box.box.setValue(String.format(Locale.ROOT, "%.2f", current));
+                        text.setText(displayText(instance, current));
                     }
             );
             addChild(new TextWidget(fromTopRight(-h()/2, h()/2), Component.literal(">|")).noShadow().centerAlignY().centerAlign());
