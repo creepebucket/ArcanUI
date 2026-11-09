@@ -2,22 +2,27 @@ package org.creepebucket.arcanui.client.screen.lib;
 
 import java.util.List;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.GenericMessageScreen;
+import net.minecraft.client.gui.screens.LevelLoadingScreen;
 import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.gui.screens.inventory.CraftingScreen;
 import net.minecraft.client.gui.screens.options.LanguageSelectScreen;
 import net.minecraft.client.gui.screens.options.OptionsScreen;
+import net.minecraft.network.chat.Component;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import org.creepebucket.arcanui.Arcanui;
 import org.creepebucket.arcanui.client.screen.implementations.ArcanCraftingScreen;
+import org.creepebucket.arcanui.client.screen.implementations.ArcanGenericLoadingScreen;
 import org.creepebucket.arcanui.client.screen.implementations.ArcanLanguageSelectScreen;
 import org.creepebucket.arcanui.client.screen.implementations.ArcanOptionsMainScreen;
 import org.creepebucket.arcanui.client.screen.implementations.ArcanPauseScreen;
 import org.creepebucket.arcanui.client.screen.implementations.ArcanTitleScreen;
+import org.creepebucket.arcanui.client.screen.implementations.ArcanWorldLoadingScreen;
 
 @EventBusSubscriber(modid = Arcanui.MODID, value = Dist.CLIENT)
 public final class ArcanScreenHooks {
@@ -72,6 +77,35 @@ public final class ArcanScreenHooks {
                 public Screen replace(Screen screen, Minecraft minecraft) {
                     OptionsScreen options = (OptionsScreen) screen;
                     return new ArcanOptionsMainScreen(options.getLastScreen(), minecraft.options, minecraft.level != null);
+                }
+            },
+            new ArcanScreenReplacer() {
+                @Override
+                public boolean matches(Screen screen) {
+                    return screen instanceof LevelLoadingScreen && !(screen instanceof ArcanWorldLoadingScreen);
+                }
+
+                @Override
+                public Screen replace(Screen screen, Minecraft minecraft) {
+                    LevelLoadingScreen loading = (LevelLoadingScreen) screen;
+                    return new ArcanWorldLoadingScreen(loading.loadTracker, loading.reason);
+                }
+            },
+            new ArcanScreenReplacer() {
+                @Override
+                public boolean matches(Screen screen) {
+                    if (!(screen instanceof GenericMessageScreen) || screen instanceof ArcanGenericLoadingScreen) {
+                        return false;
+                    }
+
+                    String title = screen.getTitle().getString();
+                    return title.equals(Component.translatable("selectWorld.resource_load").getString())
+                            || title.equals(Component.translatable("menu.savingLevel").getString());
+                }
+
+                @Override
+                public Screen replace(Screen screen, Minecraft minecraft) {
+                    return new ArcanGenericLoadingScreen(screen.getTitle());
                 }
             },
             new ArcanScreenReplacer() {
