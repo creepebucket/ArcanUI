@@ -10,6 +10,7 @@ import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.gui.screens.inventory.CraftingScreen;
 import net.minecraft.client.gui.screens.options.LanguageSelectScreen;
 import net.minecraft.client.gui.screens.options.OptionsScreen;
+import net.minecraft.client.gui.screens.options.controls.KeyBindsScreen;
 import net.minecraft.network.chat.Component;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -18,6 +19,7 @@ import net.neoforged.neoforge.client.event.ScreenEvent;
 import org.creepebucket.arcanui.Arcanui;
 import org.creepebucket.arcanui.client.screen.implementations.ArcanCraftingScreen;
 import org.creepebucket.arcanui.client.screen.implementations.ArcanGenericLoadingScreen;
+import org.creepebucket.arcanui.client.screen.implementations.ArcanKeyBindsScreen;
 import org.creepebucket.arcanui.client.screen.implementations.ArcanLanguageSelectScreen;
 import org.creepebucket.arcanui.client.screen.implementations.ArcanOptionsMainScreen;
 import org.creepebucket.arcanui.client.screen.implementations.ArcanPauseScreen;
@@ -77,6 +79,17 @@ public final class ArcanScreenHooks {
                 public Screen replace(Screen screen, Minecraft minecraft) {
                     OptionsScreen options = (OptionsScreen) screen;
                     return new ArcanOptionsMainScreen(options.getLastScreen(), minecraft.options, minecraft.level != null);
+                }
+            },
+            new ArcanScreenReplacer() {
+                @Override
+                public boolean matches(Screen screen) {
+                    return screen instanceof KeyBindsScreen && !(screen instanceof ArcanKeyBindsScreen);
+                }
+
+                @Override
+                public Screen replace(Screen screen, Minecraft minecraft) {
+                    return new ArcanKeyBindsScreen(minecraft.screen, minecraft.options);
                 }
             },
             new ArcanScreenReplacer() {
