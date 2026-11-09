@@ -2,6 +2,7 @@ package org.creepebucket.arcanui.client.screen.lib;
 
 import java.util.List;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.ConfirmLinkScreen;
 import net.minecraft.client.gui.screens.GenericMessageScreen;
 import net.minecraft.client.gui.screens.LevelLoadingScreen;
 import net.minecraft.client.gui.screens.PauseScreen;
@@ -17,6 +18,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import org.creepebucket.arcanui.Arcanui;
+import org.creepebucket.arcanui.client.screen.implementations.ArcanConfirmLinkScreen;
 import org.creepebucket.arcanui.client.screen.implementations.ArcanCraftingScreen;
 import org.creepebucket.arcanui.client.screen.implementations.ArcanGenericLoadingScreen;
 import org.creepebucket.arcanui.client.screen.implementations.ArcanKeyBindsScreen;
@@ -119,6 +121,18 @@ public final class ArcanScreenHooks {
                 @Override
                 public Screen replace(Screen screen, Minecraft minecraft) {
                     return new ArcanGenericLoadingScreen(screen.getTitle());
+                }
+            },
+            new ArcanScreenReplacer() {
+                @Override
+                public boolean matches(Screen screen) {
+                    return screen instanceof ConfirmLinkScreen && !(screen instanceof ArcanConfirmLinkScreen);
+                }
+
+                @Override
+                public Screen replace(Screen screen, Minecraft minecraft) {
+                    ConfirmLinkScreen link = (ConfirmLinkScreen) screen;
+                    return new ArcanConfirmLinkScreen(link.callback, link.url, !link.showWarning);
                 }
             },
             new ArcanScreenReplacer() {
