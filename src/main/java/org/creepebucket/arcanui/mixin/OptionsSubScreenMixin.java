@@ -1,9 +1,15 @@
 package org.creepebucket.arcanui.mixin;
 
 import net.minecraft.client.OptionInstance;
+import net.minecraft.client.gui.components.AbstractButton;
+import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.OptionsList;
 import net.minecraft.client.gui.components.StringWidget;
+import net.minecraft.client.gui.layouts.Layout;
+import net.minecraft.client.gui.layouts.LayoutElement;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.gui.screens.options.OptionsSubScreen;
+import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import org.creepebucket.arcanui.ModColors;
 import org.creepebucket.arcanui.client.screen.implementations.OptionsSubScreenWidgets;
@@ -14,6 +20,7 @@ import org.creepebucket.creepebucketlib.lib.widgets.*;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +32,7 @@ import static org.creepebucket.creepebucketlib.lib.api.Coordinate.*;
 @Mixin(OptionsSubScreen.class)
 public abstract class OptionsSubScreenMixin implements ArcanOptionsScreen {
     public ArcanUiRuntime ui = new ArcanUiRuntime();
-    public Map<OptionInstance<?>, Runnable> commandQueue = new LinkedHashMap<>();
+    public Map<Object, Runnable> commandQueue = new LinkedHashMap<>();
 
     @Shadow protected OptionsList list;
 
@@ -35,7 +42,7 @@ public abstract class OptionsSubScreenMixin implements ArcanOptionsScreen {
     }
 
     @Override
-    public Map<OptionInstance<?>, Runnable> commandQueue() {
+    public Map<Object, Runnable> commandQueue() {
         return commandQueue;
     }
 
@@ -49,6 +56,20 @@ public abstract class OptionsSubScreenMixin implements ArcanOptionsScreen {
         var cull = ui.addWidget(new CullAreaWidget(CENTER, fromBottomLeft(290, -100)).centerAlign().centerAlignY());
         var div = cull.addChild(new Widget.BlankWidget(ZERO, FULL));
         var accumulatedDy = 0;
+
+        // 原版 footer 里除 Done 外的额外按钮（辅助功能的帮助链接等）保留成列表末尾的行
+        List<LayoutElement> footerElements = new ArrayList<>();
+        ((OptionsSubScreen) (Object) this).layout.visitChildren(footerElements::add);
+
+        List<AbstractButton> footerButtons = new ArrayList<>();
+        while (!footerElements.isEmpty()) {
+            LayoutElement element = footerElements.removeLast();
+            if (element instanceof AbstractButton button) {
+                if (!button.getMessage().equals(CommonComponents.GUI_DONE)) footerButtons.add(button);
+            } else if (element instanceof Layout nested) {
+                nested.visitChildren(footerElements::add);
+            }
+        }
 
         for (OptionsList.AbstractEntry row : this.list.children()) {
             if (row instanceof OptionsList.HeaderEntry entry) {
@@ -65,6 +86,35 @@ public abstract class OptionsSubScreenMixin implements ArcanOptionsScreen {
                 var dy = accumulatedDy;
                 accumulatedDy += 20;
 
+                if (instance == null) {
+                    if (option.widget() instanceof CycleButton<?> cycle) {
+                        if (cycle.getValue() instanceof Boolean) {
+                            var setting = new OptionsSubScreenWidgets.SettingSwitchWidget(fromTopRight(0, dy + 2), fromTopLeft(120, 16), (CycleButton<Boolean>) cycle);
+                            div.addChild(setting.rightAlign().addAnimation(new Animation.FadeIn.FromRight(0.3), (double) dy / 1000));
+
+                            div.addChild(new OptionsSubScreenWidgets.OptionsTitleWidget(fromTopLeft(0, dy + 2), fromTopLeft(16, 16), () -> {
+                                commandQueue.remove(setting.cycle);
+                                setting.val = setting.cycle.getValue();
+                                setting.highlight.dx.set(setting.val ? (double) setting.w() / 2 : 0);
+                            }, setting, commandQueue, cycle.name, cycle).addAnimation(new Animation.FadeIn.FromLeft(0.3), (double) dy / 1000));
+                        } else {
+                            var setting = new OptionsSubScreenWidgets.SettingEnumWidget(fromTopRight(0, dy + 2), fromTopLeft(120, 16), cycle);
+                            div.addChild(setting.rightAlign().addAnimation(new Animation.FadeIn.FromRight(0.3), (double) dy / 1000));
+
+                            div.addChild(new OptionsSubScreenWidgets.OptionsTitleWidget(fromTopLeft(0, dy + 2), fromTopLeft(16, 16), () -> {
+                                commandQueue.remove(setting.cycle);
+                                setting.selectionIndex = setting.values.indexOf(setting.cycle.getValue());
+                                ((TextWidget) setting.text).setText(setting.displayText(setting.cycle.getValue()));
+                            }, setting, commandQueue, cycle.name, cycle).addAnimation(new Animation.FadeIn.FromLeft(0.3), (double) dy / 1000));
+                        }
+                    } else {
+                        var button = (AbstractButton) option.widget();
+                        div.addChild(new TextButtonWidget(fromTopLeft(0, dy + 2), fromTopLeft(290, 16), button.getMessage(),
+                                playQuitAnimationAndDo(() -> button.onPress(new KeyEvent(0, 0, 0)))).mainColor(0x3fffffff).bgColor(0x7f000000).addAnimation(new Animation.FadeIn.FromLeft(0.3), (double) dy / 1000));
+                    }
+                    continue;
+                }
+
                 if (instance.get() instanceof Boolean) {
                     var setting = new OptionsSubScreenWidgets.SettingSwitchWidget(fromTopRight(0, dy + 2), fromTopLeft(120, 16), (OptionInstance<Boolean>) instance);
                     div.addChild(setting.rightAlign().addAnimation(new Animation.FadeIn.FromRight(0.3), (double) dy / 1000));
@@ -73,7 +123,7 @@ public abstract class OptionsSubScreenMixin implements ArcanOptionsScreen {
                         commandQueue.remove(instance);
                         setting.val = setting.instance.get();
                         setting.highlight.dx.set(setting.val ? (double) setting.w() / 2 : 0);
-                    }, setting, commandQueue, instance).addAnimation(new Animation.FadeIn.FromLeft(0.3), (double) dy / 1000));
+                    }, setting, commandQueue, instance.caption, instance).addAnimation(new Animation.FadeIn.FromLeft(0.3), (double) dy / 1000));
                 } else if (OptionsSubScreenWidgets.enumValues(instance) instanceof List<?> values) {
                     var setting = new OptionsSubScreenWidgets.SettingEnumWidget(fromTopRight(0, dy + 2), fromTopLeft(120, 16), instance, values);
                     div.addChild(setting.rightAlign().addAnimation(new Animation.FadeIn.FromRight(0.3), (double) dy / 1000));
@@ -82,7 +132,7 @@ public abstract class OptionsSubScreenMixin implements ArcanOptionsScreen {
                         commandQueue.remove(instance);
                         setting.selectionIndex = setting.values.indexOf(instance.get());
                         ((TextWidget) setting.text).setText(setting.displayText(instance.get()));
-                    }, setting, commandQueue, instance).addAnimation(new Animation.FadeIn.FromLeft(0.3), (double) dy / 1000));
+                    }, setting, commandQueue, instance.caption, instance).addAnimation(new Animation.FadeIn.FromLeft(0.3), (double) dy / 1000));
                 } else if (instance.get() instanceof Double) {
                     var setting = new OptionsSubScreenWidgets.SettingDoubleRangeWidget(fromTopRight(0, dy + 2), fromTopLeft(120, 16), instance);
                     div.addChild(setting.rightAlign().addAnimation(new Animation.FadeIn.FromRight(0.3), (double) dy / 1000));
@@ -91,9 +141,16 @@ public abstract class OptionsSubScreenMixin implements ArcanOptionsScreen {
                         setting.current = setting.instance.get();
                         setting.text.setText(OptionsSubScreenWidgets.displayText(setting.instance, setting.current));
                         commandQueue.remove(instance);
-                    }, setting, commandQueue, instance).addAnimation(new Animation.FadeIn.FromLeft(0.3), (double) dy / 1000));
+                    }, setting, commandQueue, instance.caption, instance).addAnimation(new Animation.FadeIn.FromLeft(0.3), (double) dy / 1000));
                 }
             }
+        }
+
+        for (AbstractButton button : footerButtons) {
+            var dy = accumulatedDy;
+            accumulatedDy += 20;
+            div.addChild(new TextButtonWidget(fromTopLeft(0, dy + 2), fromTopLeft(290, 16), button.getMessage(),
+                    playQuitAnimationAndDo(() -> button.onPress(new KeyEvent(0, 0, 0)))).mainColor(0x3fffffff).bgColor(0x7f000000).addAnimation(new Animation.FadeIn.FromLeft(0.3), (double) dy / 1000));
         }
 
         if (accumulatedDy > cull.h()) {

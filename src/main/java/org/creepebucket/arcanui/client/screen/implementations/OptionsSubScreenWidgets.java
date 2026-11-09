@@ -3,6 +3,7 @@ package org.creepebucket.arcanui.client.screen.implementations;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.OptionInstance;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.options.OptionsSubScreen;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -27,8 +28,12 @@ import static org.creepebucket.creepebucketlib.lib.api.Coordinate.*;
 
 public class OptionsSubScreenWidgets {
     public static <T> Component displayText(OptionInstance<T> instance, T value) {
-        String title = instance.caption.getString();
-        String full = instance.toString.apply(value).getString();
+        return displayText(instance.caption, instance.toString.apply(value));
+    }
+
+    public static Component displayText(Component caption, Component text) {
+        String title = caption.getString();
+        String full = text.getString();
         return Component.literal(full.startsWith(title) ? full.substring(title.length()).replaceFirst("^\\s*[:：]\\s*", "") : full);
     }
 
@@ -43,6 +48,20 @@ public class OptionsSubScreenWidgets {
         commandQueue.put(instance, () -> {
             instance.set(value);
             ((OptionsSubScreen) (Object) screen).resetOption(instance);
+        });
+    }
+
+    public static <T> void queueCycleChange(Screen screen, CycleButton<T> cycle, T value) {
+        var commandQueue = ((ArcanOptionsScreen) screen).commandQueue();
+
+        if (value.equals(cycle.getValue())) {
+            commandQueue.remove(cycle);
+            return;
+        }
+
+        commandQueue.put(cycle, () -> {
+            cycle.setValue(value);
+            cycle.onValueChange.onValueChange(cycle, value);
         });
     }
 
@@ -81,21 +100,23 @@ public class OptionsSubScreenWidgets {
     public static class OptionsTitleWidget extends HoverableRectWidget implements Tickable, Clickable, Lifecycle {
         public Runnable reset;
         public Widget resetText, target, title;
-        public OptionInstance<?> instance;
+        public Component caption;
+        public Object key;
         public boolean shown;
-        public Map<OptionInstance<?>, Runnable> commandQueue;
+        public Map<Object, Runnable> commandQueue;
 
-        public OptionsTitleWidget(Coordinate pos, Coordinate size, Runnable reset, Widget target, Map<OptionInstance<?>, Runnable> commandQueue, OptionInstance<?> instance) {
+        public OptionsTitleWidget(Coordinate pos, Coordinate size, Runnable reset, Widget target, Map<Object, Runnable> commandQueue, Component caption, Object key) {
             super(pos, size, 0x3fffffff);
             this.reset = reset;
             this.target = target;
             this.commandQueue = commandQueue;
-            this.instance = instance;
+            this.caption = caption;
+            this.key = key;
         }
 
         @Override
         public void tick() {
-            boolean pending = commandQueue.containsKey(instance);
+            boolean pending = commandQueue.containsKey(key);
             if (pending == shown) return;
 
             shown = pending;
@@ -118,7 +139,7 @@ public class OptionsSubScreenWidgets {
             dw.setImmediate(-originalW());
             resetText.disable();
 
-            title = addChild(new TextWidget(fromTopRight(0, 8), instance.caption).centerAlignY().mainColor(-1));
+            title = addChild(new TextWidget(fromTopRight(0, 8), caption).centerAlignY().mainColor(-1));
         }
 
         @Override
@@ -133,6 +154,7 @@ public class OptionsSubScreenWidgets {
 
     public static class SettingSwitchWidget extends Widget implements Lifecycle, Clickable {
         public OptionInstance<Boolean> instance;
+        public CycleButton<Boolean> cycle;
         public RectangleWidget highlight;
         public boolean val;
 
@@ -143,10 +165,18 @@ public class OptionsSubScreenWidgets {
             this.val = instance.get();
         }
 
+        public SettingSwitchWidget(Coordinate pos, Coordinate size, CycleButton<Boolean> cycle) {
+            super(pos, size);
+
+            this.cycle = cycle;
+            this.val = cycle.getValue();
+        }
+
         @Override
         public void onInitialize() {
             addChild(new RectangleWidget(ZERO, FULL).applyTheme(ThemeTemplate.DARK_BG));
             highlight = new HoverableRectWidget(ZERO, fromCenterBottom(0, 0), 0x3fffffff);
+            highlight.dx.setImmediate(val ? (double) w() / 2 : 0);
             addChild(highlight);
             addChild(new TextWidget(custom(0.25, 0, 0.5, 0), CommonComponents.OPTION_OFF).noShadow().centerAlignY().centerAlign());
             addChild(new TextWidget(custom(0.75, 0, 0.5, 0), CommonComponents.OPTION_ON).noShadow().centerAlignY().centerAlign());
@@ -157,7 +187,8 @@ public class OptionsSubScreenWidgets {
             if (!isInBounds(event.x(), event.y()) || !(parent.parent.x() <= event.x() && event.x() <= parent.parent.x() + parent.parent.w() && parent.parent.y() <= event.y() && event.y() <=parent.parent.y() + parent.parent.h())) return false;
             highlight.dx.set(highlight.dx.target > 0 ? 0 : (double) w() / 2);
             val = !val;
-            queueOptionChange(screen, instance, val);
+            if (instance != null) queueOptionChange(screen, instance, val);
+            else queueCycleChange(screen, cycle, val);
             return true;
         }
     }
@@ -190,6 +221,7 @@ public class OptionsSubScreenWidgets {
 
     public static class SettingEnumWidget extends Widget implements Lifecycle{
         public OptionInstance<Object> instance;
+        public CycleButton<Object> cycle;
         public List<?> values;
         public int selectionIndex;
         public Widget text;
@@ -207,19 +239,29 @@ public class OptionsSubScreenWidgets {
             this.selectionIndex = values.indexOf(instance.get());
         }
 
+        @SuppressWarnings("unchecked")
+        public SettingEnumWidget(Coordinate pos, Coordinate size, CycleButton<?> cycle) {
+            super(pos, size);
+
+            this.cycle = (CycleButton<Object>) cycle;
+            this.values = this.cycle.values.getSelectedList();
+            this.selectionIndex = values.indexOf(cycle.getValue());
+        }
+
         @Override
         public void onInitialize() {
             addChild(new RectangleWidget(fromTopLeft(h() + 1, 0), fromBottomRight(-2 * h() - 2, 0)).applyTheme(ThemeTemplate.DARK_BG));
 
             // 初始化text
-            text = addChild(new TextWidget(CENTER, displayText(instance.get())).noShadow().centerAlignY().centerAlign());
+            text = addChild(new TextWidget(CENTER, displayText(instance != null ? instance.get() : cycle.getValue())).noShadow().centerAlignY().centerAlign());
 
             // 左
             addChild(new HoverableRectWidget(ZERO, fromTopLeft(h(), h()), 0x7f000000)).addClickBehavior(
                     () -> {
                         selectionIndex = Math.floorMod(selectionIndex - (Minecraft.getInstance().hasShiftDown() ? 5 : 1), values.size());
                         var next = values.get(selectionIndex);
-                        queueOptionChange(screen, instance, next);
+                        if (instance != null) queueOptionChange(screen, instance, next);
+                        else queueCycleChange(screen, cycle, next);
                         text.addAnimation(new Animation.FadeOut.ToRight(0.3), 0);
                         text = addChild(new TextWidget(CENTER, displayText(next)).noShadow().centerAlignY().centerAlign().addAnimation(new Animation.FadeIn.FromLeft(0.3), 0));
                     }
@@ -230,7 +272,8 @@ public class OptionsSubScreenWidgets {
                     () -> {
                         selectionIndex = Math.floorMod(selectionIndex + (Minecraft.getInstance().hasShiftDown() ? 5 : 1), values.size());
                         var next = values.get(selectionIndex);
-                        queueOptionChange(screen, instance, next);
+                        if (instance != null) queueOptionChange(screen, instance, next);
+                        else queueCycleChange(screen, cycle, next);
                         text.addAnimation(new Animation.FadeOut.ToLeft(0.3), 0);
                         text = addChild(new TextWidget(CENTER, displayText(next)).noShadow().centerAlignY().centerAlign().addAnimation(new Animation.FadeIn.FromRight(0.3), 0));
                     }
@@ -239,7 +282,8 @@ public class OptionsSubScreenWidgets {
         }
 
         public Component displayText(Object value) {
-            return OptionsSubScreenWidgets.displayText(instance, value);
+            if (instance != null) return OptionsSubScreenWidgets.displayText(instance, value);
+            return OptionsSubScreenWidgets.displayText(cycle.name, cycle.valueStringifier.apply(value));
         }
     }
 
