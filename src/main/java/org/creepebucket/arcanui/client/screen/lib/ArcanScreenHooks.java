@@ -12,6 +12,7 @@ import net.minecraft.client.gui.screens.inventory.CraftingScreen;
 import net.minecraft.client.gui.screens.options.LanguageSelectScreen;
 import net.minecraft.client.gui.screens.options.OptionsScreen;
 import net.minecraft.client.gui.screens.options.controls.KeyBindsScreen;
+import net.minecraft.client.gui.screens.worldselection.SelectWorldScreen;
 import net.minecraft.network.chat.Component;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -25,6 +26,7 @@ import org.creepebucket.arcanui.client.screen.implementations.ArcanKeyBindsScree
 import org.creepebucket.arcanui.client.screen.implementations.ArcanLanguageSelectScreen;
 import org.creepebucket.arcanui.client.screen.implementations.ArcanOptionsMainScreen;
 import org.creepebucket.arcanui.client.screen.implementations.ArcanPauseScreen;
+import org.creepebucket.arcanui.client.screen.implementations.ArcanSelectWorldScreen;
 import org.creepebucket.arcanui.client.screen.implementations.ArcanTitleScreen;
 import org.creepebucket.arcanui.client.screen.implementations.ArcanWorldLoadingScreen;
 
@@ -47,6 +49,17 @@ public final class ArcanScreenHooks {
                 @Override
                 public Screen replace(Screen screen, Minecraft minecraft) {
                     return new ArcanTitleScreen();
+                }
+            },
+            new ArcanScreenReplacer() {
+                @Override
+                public boolean matches(Screen screen) {
+                    return screen instanceof SelectWorldScreen && !(screen instanceof ArcanSelectWorldScreen);
+                }
+
+                @Override
+                public Screen replace(Screen screen, Minecraft minecraft) {
+                    return new ArcanSelectWorldScreen((SelectWorldScreen) screen);
                 }
             },
             new ArcanScreenReplacer() {

@@ -109,8 +109,8 @@ public abstract class OptionsSubScreenMixin implements ArcanOptionsScreen {
                         }
                     } else {
                         var button = (AbstractButton) option.widget();
-                        div.addChild(new TextButtonWidget(fromTopLeft(0, dy + 2), fromTopRight(0, 16), button.getMessage(),
-                                playQuitAnimationAndDo(() -> button.onPress(new KeyEvent(0, 0, 0)))).mainColor(0x3fffffff).bgColor(0x7f000000).addAnimation(new Animation.FadeIn.FromLeft(0.3), (double) dy / 1000));
+                        div.addChild(new TextButtonWidget(fromTopLeft(0, dy + 2), fromTopRight(0, 16), button.getMessage(), playQuitAnimationAndDo(() -> button.onPress(new KeyEvent(0, 0, 0))))
+                                .mainColor(ModColors.MAIN_COLOR_M.withAlpha(0x7f)).bgColor(0x7f000000).addAnimation(new Animation.FadeIn.FromLeft(0.3), (double) dy / 1000));
                     }
                     continue;
                 }
@@ -149,8 +149,8 @@ public abstract class OptionsSubScreenMixin implements ArcanOptionsScreen {
         for (AbstractButton button : footerButtons) {
             var dy = accumulatedDy;
             accumulatedDy += 20;
-            div.addChild(new TextButtonWidget(fromTopLeft(0, dy + 2), fromTopRight(0, 16), button.getMessage(),
-                    playQuitAnimationAndDo(() -> button.onPress(new KeyEvent(0, 0, 0)))).mainColor(0x3fffffff).bgColor(0x7f000000).addAnimation(new Animation.FadeIn.FromLeft(0.3), (double) dy / 1000));
+            div.addChild(new TextButtonWidget(fromTopLeft(0, dy + 2), fromTopRight(0, 16), button.getMessage(), playQuitAnimationAndDo(() -> button.onPress(new KeyEvent(0, 0, 0))))
+                    .mainColor(ModColors.MAIN_COLOR_M.withAlpha(0x7f)).bgColor(0x7f000000).addAnimation(new Animation.FadeIn.FromLeft(0.3), (double) dy / 1000));
         }
 
         if (accumulatedDy > cull.h()) {

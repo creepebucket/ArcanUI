@@ -130,11 +130,10 @@ public class ArcanLanguageSelectScreen extends LanguageSelectScreen implements A
             if (isInBounds(event.x(), event.y())) {
                 selectionHighlight.dw.set(w());
                 ((ArcanLanguageSelectScreen) screen).selectedLanguage = language;
-                return true;
             } else {
                 selectionHighlight.dw.set(0);
-                return false;
             }
+            return false;
         }
     }
 
