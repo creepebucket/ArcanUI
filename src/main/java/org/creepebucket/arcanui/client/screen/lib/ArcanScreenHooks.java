@@ -3,6 +3,7 @@ package org.creepebucket.arcanui.client.screen.lib;
 import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConfirmLinkScreen;
+import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.GenericMessageScreen;
 import net.minecraft.client.gui.screens.LevelLoadingScreen;
 import net.minecraft.client.gui.screens.PauseScreen;
@@ -12,6 +13,7 @@ import net.minecraft.client.gui.screens.inventory.CraftingScreen;
 import net.minecraft.client.gui.screens.options.LanguageSelectScreen;
 import net.minecraft.client.gui.screens.options.OptionsScreen;
 import net.minecraft.client.gui.screens.options.controls.KeyBindsScreen;
+import net.minecraft.client.gui.screens.worldselection.EditWorldScreen;
 import net.minecraft.client.gui.screens.worldselection.SelectWorldScreen;
 import net.minecraft.network.chat.Component;
 import net.neoforged.api.distmarker.Dist;
@@ -20,7 +22,9 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import org.creepebucket.arcanui.Arcanui;
 import org.creepebucket.arcanui.client.screen.implementations.ArcanConfirmLinkScreen;
+import org.creepebucket.arcanui.client.screen.implementations.ArcanConfirmScreen;
 import org.creepebucket.arcanui.client.screen.implementations.ArcanCraftingScreen;
+import org.creepebucket.arcanui.client.screen.implementations.ArcanEditWorldScreen;
 import org.creepebucket.arcanui.client.screen.implementations.ArcanGenericLoadingScreen;
 import org.creepebucket.arcanui.client.screen.implementations.ArcanKeyBindsScreen;
 import org.creepebucket.arcanui.client.screen.implementations.ArcanLanguageSelectScreen;
@@ -146,6 +150,31 @@ public final class ArcanScreenHooks {
                 public Screen replace(Screen screen, Minecraft minecraft) {
                     ConfirmLinkScreen link = (ConfirmLinkScreen) screen;
                     return new ArcanConfirmLinkScreen(link.callback, link.url, !link.showWarning);
+                }
+            },
+            new ArcanScreenReplacer() {
+                @Override
+                public boolean matches(Screen screen) {
+                    return screen instanceof EditWorldScreen;
+                }
+
+                @Override
+                public Screen replace(Screen screen, Minecraft minecraft) {
+                    EditWorldScreen edit = (EditWorldScreen) screen;
+                    return new ArcanEditWorldScreen(edit.levelAccess, edit.nameEdit.getValue(), edit.callback);
+                }
+            },
+            new ArcanScreenReplacer() {
+                @Override
+                public boolean matches(Screen screen) {
+                    return screen instanceof ConfirmScreen && !(screen instanceof ArcanConfirmScreen)
+                            && screen.getTitle().getString().equals(Component.translatable("selectWorld.deleteQuestion").getString());
+                }
+
+                @Override
+                public Screen replace(Screen screen, Minecraft minecraft) {
+                    ConfirmScreen confirm = (ConfirmScreen) screen;
+                    return new ArcanConfirmScreen(confirm.callback, confirm.getTitle(), confirm.message, confirm.yesButtonComponent, confirm.noButtonComponent);
                 }
             },
             new ArcanScreenReplacer() {
